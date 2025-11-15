@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.bbx": "bbx",
+        "shader_to_string.c": "cpp"
+    }
+}

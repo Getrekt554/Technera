@@ -3,13 +3,17 @@
 #include <iostream>
 #include <cstdint>
 
+#include "shader_to_string.c"
+
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void process_input(GLFWwindow* window);
+void free_all();
 
 int main() {
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -47,8 +51,11 @@ int main() {
     }
 
     glfwTerminate();
-
     return 0;
+}
+
+void free_all() {
+
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
