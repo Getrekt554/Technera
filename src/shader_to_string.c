@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-char* get_shader(char* name) {
+const char* get_shader(char* name) {
     const char* base = "../src/shaders/";
     size_t len = strlen(base) + strlen(name) + 1;
     char* path = (char *)malloc(len);
