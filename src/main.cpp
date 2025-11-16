@@ -3,7 +3,7 @@
 #include <iostream>
 #include <cstdint>
 
-#include "shader_to_string.c"
+#include "shader_handler.c"
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -61,51 +61,13 @@ int main() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     //vert shader
-    unsigned int vertex_shader;
-    vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertex_shader_src, NULL);
-    glCompileShader(vertex_shader);
-
-    //check vert shader success
-    int success;
-    char info_log[512];
-    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-    if(!success) {
-        glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << info_log << '\n';
-    }
+    unsigned int vertex_shader = init_shader(GL_VERTEX_SHADER, vertex_shader_src);
 
     //fragment shader
-    unsigned int fragment_shader;
-    fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_shader_src, NULL);
-    glCompileShader(fragment_shader);
-
-    //check frag shader success
-    success;
-    info_log[512];
-    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-    if(!success) {
-        glGetShaderInfoLog(fragment_shader, 512, NULL, info_log);
-        std::cout << "ERROR::SHADER::fragment::COMPILATION_FAILED\n" << info_log << '\n';
-    }
+    unsigned int fragment_shader = init_shader(GL_FRAGMENT_SHADER, fragment_shader_src);
 
     //shader program
-    unsigned int shader_program;
-    shader_program = glCreateProgram();
-
-    glAttachShader(shader_program, vertex_shader);
-    glAttachShader(shader_program, fragment_shader);
-    glLinkProgram(shader_program);
-
-    glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
-    if(!success) {
-        glGetProgramInfoLog(shader_program, 512, NULL, info_log);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << info_log << '\n';
-    }
-
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
+    unsigned int shader_program = init_shader_program(vertex_shader, fragment_shader);
 
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
