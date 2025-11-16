@@ -1,7 +1,12 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+
 #include <iostream>
 #include <cstdint>
+#include <math.h>
 
 #include "shader_handler.c"
 
@@ -9,15 +14,13 @@ const int WIDTH = 800;
 const int HEIGHT = 600;
 
 float vertices[] = {
-    // first triangle
-     0.5f,  0.5f, 0.0f,  // top right
-     0.5f, -0.5f, 0.0f,  // bottom right
-    -0.5f, -0.5f, 0.0f,  // bottom left
-    -0.5f,  0.5f, 0.0f   // top left
+    //positions           //colors
+     0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
+    -0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
+     0.0f, 0.5f,  0.0f,   0.0f, 0.0f, 1.0f
 };
 unsigned int indices[] = {
-    0, 1, 3,
-    1, 2, 3
+    0, 1, 2
 };
 
 const char* vertex_shader_src = get_shader("vertex_shader.vert");
@@ -53,8 +56,6 @@ int main() {
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-
     unsigned int VBO;
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -82,34 +83,63 @@ int main() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    //wireframe mode
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    int n;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &n);
+    std::cout << n << '\n';
+
+    //IMGUI setup
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
 
     while(!glfwWindowShouldClose(window)) {
         process_input(window);
 
+        //start ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        //ImGui Window
+        ImGui::Begin("my window");
+        ImGui::Text("Hello");
+        ImGui::End();
+
         //render stuff
+        ImGui::Render();
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
         glUseProgram(shader_program);
+
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    free_all();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     glfwTerminate();
     return 0;
-}
-
-void free_all() {
-
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
