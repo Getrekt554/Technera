@@ -35,6 +35,8 @@ void process_input(GLFWwindow* window);
 void free_all();
 int input_callback(ImGuiInputTextCallbackData* data);
 
+float zoom = 2.0f;
+
 int main() {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -97,14 +99,17 @@ int main() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-    ImGuiIO& io = ImGui::GetIO();
     ImGui::StyleColorsDark();
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::GetStyle().ScrollbarSize = 0.0f;
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
     static char buffer[1024] = "This is a\n text box gng.";
 
+    ImGui::SetNextWindowSize(ImVec2(curr_width/2, curr_height), ImGuiCond_Always);
     while(!glfwWindowShouldClose(window)) {
         process_input(window);
 
@@ -116,11 +121,15 @@ int main() {
         //ImGui Window
         glfwGetWindowSize(window, &curr_width, &curr_height);
 
-        ImGui::SetNextWindowSize(ImVec2(curr_width/2, curr_height), ImGuiCond_Always);
+        io.FontGlobalScale = zoom;
+
+        ImGui::SetNextWindowSizeConstraints(ImVec2(100, curr_height), ImVec2(FLT_MAX, curr_height));
         ImGui::SetNextWindowPos(ImVec2(0.0f,0.0f), ImGuiCond_Always);
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
-        ImGui::Begin("my window", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground);
+        ImGui::Begin("my window", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
         ImGui::InputTextMultiline("##", buffer, sizeof(buffer), ImVec2(-1.0f, -1.0f), ImGuiInputTextFlags_CallbackAlways, input_callback);
+
+        ImGui::Button("Button", ImVec2(10.0f, 5.0f));
 
         ImGui::PopStyleColor(1);
         ImGui::End();
@@ -165,8 +174,27 @@ char behind_cursor = 0;
 int input_callback(ImGuiInputTextCallbackData* data) {
     if (data->EventFlag == ImGuiInputTextFlags_CallbackAlways) {
 
-        if (!ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
+        //for getting deleted chars
+        if (!ImGui::IsKeyPressed(ImGuiKey_Backspace) && !ImGui::IsKeyPressed(ImGuiKey_Enter)) {
             behind_cursor = data->Buf[data->CursorPos - 1];
+        }
+
+        //zooming
+        if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Equal)) {
+            if (zoom == 5.0f) {
+                return 1;
+            }
+
+            zoom += 1.0f;
+            return 1;
+        }
+        else if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Minus)) {
+            if (zoom == 2.0f) {
+                return 1;
+            }
+            
+            zoom -= 1.0f;
+            return 1;
         }
 
         //tabbing
@@ -223,6 +251,28 @@ int input_callback(ImGuiInputTextCallbackData* data) {
             data->DeleteChars(data->CursorPos, 1);
             return 1;
         }
+
+        //moving the cursor back when moving down a line in empty brackets
+        if (ImGui::IsKeyPressed(ImGuiKey_Enter) && behind_cursor == '(' && data->Buf[data->CursorPos] == ')') {
+            data->InsertChars(data->CursorPos, "    \n");
+            data->CursorPos = std::max(0, data->CursorPos - 1);
+            return 1;
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_Enter) && behind_cursor == '[' && data->Buf[data->CursorPos] == ']') {
+            data->InsertChars(data->CursorPos, "    \n");
+            data->CursorPos = std::max(0, data->CursorPos - 1);
+            return 1;
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_Enter) && behind_cursor == '{' && data->Buf[data->CursorPos] == '}') {
+            data->InsertChars(data->CursorPos, "    \n");
+            data->CursorPos = std::max(0, data->CursorPos - 1);
+            return 1;
+        }
     }
     return 0;
 }
+
+int split_lines(ImGuiInputTextCallbackData* data) {
+    data->Buf[]
+}
+
