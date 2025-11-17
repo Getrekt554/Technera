@@ -7,12 +7,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(GLFW_DIR "${CMAKE_SOURCE_DIR}/external/glfw")
 set(GLAD_DIR "${CMAKE_SOURCE_DIR}/external/glad")
 set(IMGUI_DIR "${CMAKE_SOURCE_DIR}/external/imgui")
+set(GLM_DIR "${CMAKE_SOURCE_DIR}/external/glm")
 
 include_directories(
     ${GLFW_DIR}/include
     ${GLAD_DIR}/include
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
+    ${GLM_DIR};
 )
 
 link_directories(${GLFW_DIR}/lib-mingw-w64)

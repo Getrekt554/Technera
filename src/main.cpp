@@ -3,6 +3,9 @@
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
+#include "glm.hpp"
+#include "gtc/matrix_transform.hpp"
+#include "gtc/type_ptr.hpp"
 
 #include <iostream>
 #include <cstdint>
@@ -18,12 +21,17 @@ int curr_height;
 
 float vertices[] = {
     //positions           //colors
-     0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
-    -0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
-     0.0f, 0.5f,  0.0f,   0.0f, 0.0f, 1.0f
+     0.0f,  0.5f, 0.0f,   1.0f, 1.0f, 1.0f,//top
+    -0.5f, -0.5f, -0.5f,  0.64f, 0.2f, 0.89f,//bottom front left
+     0.5f, -0.5f, -0.5f,  0.64f, 0.2f, 0.89f,//bottom front right
+    -0.5f, -0.5f, 0.5f,   0.64f, 0.2f, 0.89f,//bottom back left
+     0.5f, -0.5f, 0.5f,   0.64f, 0.2f, 0.89f //bottom back right
 };
 unsigned int indices[] = {
-    0, 1, 2
+    0, 1, 2,//front triangle
+    0, 1, 3,//left triangle
+    0, 2, 4,//right triangle
+    0, 3, 4 //back triangle
 };
 
 const char* vertex_shader_src = get_shader("vertex_shader.vert");
@@ -32,7 +40,6 @@ const char* fragment_shader_src = get_shader("fragment_shader.frag");
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void process_input(GLFWwindow* window);
-void free_all();
 int input_callback(ImGuiInputTextCallbackData* data);
 
 float zoom = 2.0f;
@@ -95,6 +102,8 @@ int main() {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
     glEnableVertexAttribArray(1);
 
+    glEnable(GL_DEPTH_TEST);
+
     //IMGUI setup
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -138,12 +147,23 @@ int main() {
         ImGui::Render();
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shader_program);
+        //rotate the prism
+        glm::mat4 model = glm::rotate(glm::mat4(1.0f), (float)glfwGetTime(), glm::vec3(0.0f,1.0f,0.0f));
+        glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)curr_width/curr_height, 0.1f, 100.0f);
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+
+        unsigned int model_location = glGetUniformLocation(shader_program, "model");
+        glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
+        unsigned int projection_location = glGetUniformLocation(shader_program, "projection");
+        glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
+        unsigned int view_location = glGetUniformLocation(shader_program, "view");
+        glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
 
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
