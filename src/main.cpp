@@ -273,6 +273,6 @@ int input_callback(ImGuiInputTextCallbackData* data) {
 }
 
 int split_lines(ImGuiInputTextCallbackData* data) {
-    data->Buf[]
+    
 }
 
