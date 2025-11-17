@@ -13,6 +13,9 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
+int curr_width;
+int curr_height;
+
 float vertices[] = {
     //positions           //colors
      0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
@@ -30,6 +33,7 @@ const char* fragment_shader_src = get_shader("fragment_shader.frag");
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void process_input(GLFWwindow* window);
 void free_all();
+int input_callback(ImGuiInputTextCallbackData* data);
 
 int main() {
     glfwInit();
@@ -89,10 +93,6 @@ int main() {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    int n;
-    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &n);
-    std::cout << n << '\n';
-
     //IMGUI setup
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -103,6 +103,8 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
+    static char buffer[1024] = "This is a\n text box gng.";
+
     while(!glfwWindowShouldClose(window)) {
         process_input(window);
 
@@ -110,10 +112,17 @@ int main() {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-
+        
         //ImGui Window
-        ImGui::Begin("my window");
-        ImGui::Text("Hello");
+        glfwGetWindowSize(window, &curr_width, &curr_height);
+
+        ImGui::SetNextWindowSize(ImVec2(curr_width/2, curr_height), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(0.0f,0.0f), ImGuiCond_Always);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+        ImGui::Begin("my window", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground);
+        ImGui::InputTextMultiline("##", buffer, sizeof(buffer), ImVec2(-1.0f, -1.0f), ImGuiInputTextFlags_CallbackAlways, input_callback);
+
+        ImGui::PopStyleColor(1);
         ImGui::End();
 
         //render stuff
@@ -150,4 +159,70 @@ void process_input(GLFWwindow* window) {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
+}
+
+char behind_cursor = 0;
+int input_callback(ImGuiInputTextCallbackData* data) {
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackAlways) {
+
+        if (!ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
+            behind_cursor = data->Buf[data->CursorPos - 1];
+        }
+
+        //tabbing
+        if (ImGui::IsKeyPressed(ImGuiKey_Tab)) {
+            data->InsertChars(data->CursorPos, "    ");
+            return 1;
+        }
+
+        //bracket and quote inserting
+        if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsKeyPressed(ImGuiKey_9)) {
+            data->InsertChars(data->CursorPos, ")");
+            data->CursorPos = std::max(0, data->CursorPos - 1);
+            return 1;
+        }
+        else if (!ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsKeyPressed(ImGuiKey_LeftBracket)) {
+            data->InsertChars(data->CursorPos, "]");
+            data->CursorPos = std::max(0, data->CursorPos - 1);
+            return 1;
+        }
+        else if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsKeyPressed(ImGuiKey_LeftBracket)) {
+            data->InsertChars(data->CursorPos, "}");
+            data->CursorPos = std::max(0, data->CursorPos - 1);
+            return 1;
+        }
+        else if (!ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsKeyPressed(ImGuiKey_Apostrophe)) {
+            data->InsertChars(data->CursorPos, "\'");
+            data->CursorPos = std::max(0, data->CursorPos - 1);
+            return 1;
+        }
+        else if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsKeyPressed(ImGuiKey_Apostrophe)) {
+            data->InsertChars(data->CursorPos, "\"");
+            data->CursorPos = std::max(0, data->CursorPos - 1);
+            return 1;
+        }
+        
+        //bracket and quote removing
+        if (ImGui::IsKeyPressed(ImGuiKey_Backspace) && behind_cursor == '(' && data->Buf[data->CursorPos] == ')') {
+            data->DeleteChars(data->CursorPos, 1);
+            return 1;
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_Backspace) && behind_cursor == '{' && data->Buf[data->CursorPos] == '}') {
+            data->DeleteChars(data->CursorPos, 1);
+            return 1;
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_Backspace) && behind_cursor == '[' && data->Buf[data->CursorPos] == ']') {
+            data->DeleteChars(data->CursorPos, 1);
+            return 1;
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_Backspace) && behind_cursor == '\"' && data->Buf[data->CursorPos] == '\"') {
+            data->DeleteChars(data->CursorPos, 1);
+            return 1;
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_Backspace) && behind_cursor == '\'' && data->Buf[data->CursorPos] == '\'') {
+            data->DeleteChars(data->CursorPos, 1);
+            return 1;
+        }
+    }
+    return 0;
 }
