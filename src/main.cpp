@@ -11,6 +11,12 @@
 #include <cstdint>
 #include <math.h>
 
+#include <windows.h>
+#include <commdlg.h>
+#include <string>
+#include <fstream>
+#include <sstream>
+
 #include "shader_handler.c"
 
 const int WIDTH = 800;
@@ -41,8 +47,16 @@ const char* fragment_shader_src = get_shader("fragment_shader.frag");
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void process_input(GLFWwindow* window);
 int input_callback(ImGuiInputTextCallbackData* data);
+void create_file_from_filesystem();
+void load_file_from_filesystem_into_buffer();
+void clear_textbox();
+bool save_file_direct(const std::string& path);
 
 float zoom = 2.0f;
+std::string text_box_text;
+char buffer[1024];
+
+std::string current_file;
 
 int main() {
     glfwInit();
@@ -116,8 +130,6 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-    static char buffer[1024] = "This is a\n text box gng.";
-
     ImGui::SetNextWindowSize(ImVec2(curr_width/2, curr_height), ImGuiCond_Always);
     while(!glfwWindowShouldClose(window)) {
         process_input(window);
@@ -132,15 +144,64 @@ int main() {
 
         io.FontGlobalScale = zoom;
 
-        ImGui::SetNextWindowSizeConstraints(ImVec2(100, curr_height), ImVec2(FLT_MAX, curr_height));
-        ImGui::SetNextWindowPos(ImVec2(0.0f,0.0f), ImGuiCond_Always);
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.2f, 0.2f, 0.8f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.4f, 0.4f, 1.0f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.4f, 0.4f, 1.0f, 1.0f)); 
+
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("New")) {
+                    clear_textbox();
+                    current_file = "";
+                }
+                
+                if (ImGui::MenuItem("Open")) {
+                    load_file_from_filesystem_into_buffer();
+                }
+                
+                if (ImGui::MenuItem("Save (CTRL-S)")) {
+                    create_file_from_filesystem();
+                }
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::SameLine(0.0f,55.0f);
+
+            if (ImGui::BeginMenu("Build")) {
+                if (ImGui::MenuItem("Compile (CTRL-B)")) {
+                    if (current_file != "") {
+                        char cmd[256];
+                        snprintf(cmd, sizeof(cmd), "gcc \"%s\" -o main", current_file.c_str());
+                        system(cmd);
+                    }
+                }
+                if (ImGui::MenuItem("Compile Settings")) {
+                    
+                }
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMainMenuBar();
+        }
+
+        float menuBarHeight = ImGui::GetFrameHeight();
+        float sidebar_width = 200.0f;
+
+        //main windows
+        ImGui::SetNextWindowPos(ImVec2(0, menuBarHeight), ImGuiCond_Always);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(100, curr_height-menuBarHeight), ImVec2(FLT_MAX, curr_height-menuBarHeight));
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
-        ImGui::Begin("my window", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+        ImGui::Begin("maincodetextbox", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
         ImGui::InputTextMultiline("##", buffer, sizeof(buffer), ImVec2(-1.0f, -1.0f), ImGuiInputTextFlags_CallbackAlways, input_callback);
 
-        ImGui::Button("Button", ImVec2(10.0f, 5.0f));
+        ImGui::SetNextWindowPos(ImVec2(ImGui::GetWindowSize().x, menuBarHeight), ImGuiCond_Always);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(sidebar_width, curr_height-menuBarHeight), ImVec2(FLT_MAX, curr_height-menuBarHeight));
+        ImGui::Begin("sidebar", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
 
-        ImGui::PopStyleColor(1);
+        ImGui::PopStyleColor(4);
+        ImGui::End();
         ImGui::End();
 
         //render stuff
@@ -170,6 +231,34 @@ int main() {
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        //zooming
+        if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Equal)) {
+            zoom += 1.0f;
+            if (zoom >= 5.0f) {
+                zoom = 5.0f;
+            }
+        }
+        else if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Minus)) {
+            zoom -= 1.0f;
+            if (zoom <= 2.0f) {
+                zoom = 2.0f;
+            }
+        }
+
+        //check for shortcuts
+        if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_S) && current_file == "") {
+            create_file_from_filesystem();
+        }
+        else if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_S) && current_file != "") {
+            save_file_direct(current_file);
+        }
+        else if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_B) && current_file != "") {
+            char cmd[256];
+            snprintf(cmd, sizeof(cmd), "gcc \"%s\" -o main", current_file.c_str());
+            system(cmd);
+        }
+        
     }
 
     ImGui_ImplOpenGL3_Shutdown();
@@ -194,27 +283,12 @@ char behind_cursor = 0;
 int input_callback(ImGuiInputTextCallbackData* data) {
     if (data->EventFlag == ImGuiInputTextFlags_CallbackAlways) {
 
+        //setting code text buffer
+        text_box_text = std::string(data->Buf, data->BufTextLen);
+
         //for getting deleted chars
         if (!ImGui::IsKeyPressed(ImGuiKey_Backspace) && !ImGui::IsKeyPressed(ImGuiKey_Enter)) {
             behind_cursor = data->Buf[data->CursorPos - 1];
-        }
-
-        //zooming
-        if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Equal)) {
-            if (zoom == 5.0f) {
-                return 1;
-            }
-
-            zoom += 1.0f;
-            return 1;
-        }
-        else if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_Minus)) {
-            if (zoom == 2.0f) {
-                return 1;
-            }
-            
-            zoom -= 1.0f;
-            return 1;
         }
 
         //tabbing
@@ -292,7 +366,97 @@ int input_callback(ImGuiInputTextCallbackData* data) {
     return 0;
 }
 
-int split_lines(ImGuiInputTextCallbackData* data) {
-    
+void clear_textbox() {
+    buffer[0] = '\0';
+}   
+
+std::string OpenSaveCDialog() {
+    char filename[MAX_PATH] = "";
+    OPENFILENAME ofn = {};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.lpstrFile = filename;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFilter = "C Files\0*.c\0All Files\0*.*\0";
+    ofn.lpstrDefExt = "c";
+    ofn.Flags = OFN_OVERWRITEPROMPT;
+
+    if (GetSaveFileName(&ofn)) {
+        return std::string(filename);
+    }
+    return "";
 }
 
+std::string OpenCFileDialog() {
+    char filename[MAX_PATH] = "";
+    OPENFILENAME ofn = {};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.lpstrFile = filename;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFilter = "C Files\0*.c\0All Files\0*.*\0";
+    ofn.lpstrDefExt = "c";
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+
+    if (GetOpenFileName(&ofn)) {
+        return std::string(filename);
+    }
+
+    return ""; 
+}
+
+bool create_file(const std::string& path, const std::string& content) {
+    std::ofstream file(path);
+    if(!file.is_open()) {
+        std::cerr << "Failed to create file: " << path << std::endl;
+        return false; 
+    }
+
+    file << content;
+    file.close();
+    return true;
+}
+
+void create_file_from_filesystem() {
+    std::string path = OpenSaveCDialog();
+    if (!path.empty()) {
+        std::string program = text_box_text;
+
+        current_file = path;
+
+        bool success = create_file(path, program);
+        if (success) {
+            std::cout << "File Created at: " << path << std::endl;
+        }
+    }
+}
+
+void load_file_from_filesystem_into_buffer() {
+    std::string path = OpenCFileDialog();
+    if (path.empty()) {
+        return;
+    }
+
+    std::ifstream file(path);
+    current_file = path;
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << path << std::endl;
+        return;
+    }
+
+    std::stringstream ss;
+    ss << file.rdbuf();
+    std::string content = ss.str();
+
+    strncpy(buffer, content.c_str(), sizeof(buffer));
+    buffer[sizeof(buffer) - 1] = '\0';
+}
+
+bool save_file_direct(const std::string& path) {
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        std::cerr << "Failed to save directly: " << path << std::endl;
+    }
+
+    file << buffer;
+    file.close();
+    return true;
+}
