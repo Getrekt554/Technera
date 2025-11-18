@@ -134,7 +134,7 @@ int main() {
 
         ImGui::SetNextWindowSizeConstraints(ImVec2(100, curr_height), ImVec2(FLT_MAX, curr_height));
         ImGui::SetNextWindowPos(ImVec2(0.0f,0.0f), ImGuiCond_Always);
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.1f, 0.1f, 0.5f));
         ImGui::Begin("my window", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
         ImGui::InputTextMultiline("##", buffer, sizeof(buffer), ImVec2(-1.0f, -1.0f), ImGuiInputTextFlags_CallbackAlways, input_callback);
 
