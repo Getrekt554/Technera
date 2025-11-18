@@ -192,7 +192,7 @@ int main() {
         //main windows
         ImGui::SetNextWindowPos(ImVec2(0, menuBarHeight), ImGuiCond_Always);
         ImGui::SetNextWindowSizeConstraints(ImVec2(100, curr_height-menuBarHeight), ImVec2(FLT_MAX, curr_height-menuBarHeight));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.1f, 0.1f, 0.67f));
         ImGui::Begin("maincodetextbox", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
         ImGui::InputTextMultiline("##", buffer, sizeof(buffer), ImVec2(-1.0f, -1.0f), ImGuiInputTextFlags_CallbackAlways, input_callback);
 
