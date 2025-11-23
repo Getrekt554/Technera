@@ -51,6 +51,7 @@ void create_file_from_filesystem();
 void load_file_from_filesystem_into_buffer();
 void clear_textbox();
 bool save_file_direct(const std::string& path);
+void text_highlight(const char*);
 
 float zoom = 2.0f;
 std::string text_box_text;
@@ -183,6 +184,26 @@ int main() {
                 ImGui::EndMenu();
             }
 
+            ImGui::SameLine(0.0f,55.0f);
+
+            if (ImGui::BeginMenu("Run")) {
+                if (ImGui::MenuItem("Run (CTRL-R)")) {
+                    if (current_file != "") {
+                        char cmd[256];
+                        snprintf(cmd, sizeof(cmd), "%s", current_file.c_str());
+                        cmd[strlen(cmd)-6] ='\0';
+                        strcat(cmd, "main.exe");
+                        printf("%s",cmd);
+                        system(cmd);
+                    }
+                }
+                if (ImGui::MenuItem("Run Settings")) {
+                    
+                }
+
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMainMenuBar();
         }
 
@@ -280,8 +301,18 @@ void process_input(GLFWwindow* window) {
 }
 
 char behind_cursor = 0;
+int check = 0;
 int input_callback(ImGuiInputTextCallbackData* data) {
+
     if (data->EventFlag == ImGuiInputTextFlags_CallbackAlways) {
+
+        if (check > 120) {
+            text_highlight(data->Buf);
+            check = 0;
+        }
+        else {
+            check++;
+        }
 
         //setting code text buffer
         text_box_text = std::string(data->Buf, data->BufTextLen);
@@ -459,4 +490,40 @@ bool save_file_direct(const std::string& path) {
     file << buffer;
     file.close();
     return true;
+}
+
+
+const char* keyword = "int";
+
+#include <imgui.h>
+#include <cstring>
+
+void text_highlight(const char* buffer) {
+    const char* keywords[] = { "int", "float", "return" };
+    const int keyword_count = sizeof(keywords) / sizeof(keywords[0]);
+    const char* ptr = buffer;
+    while (*ptr) {
+        bool matched = false;
+        for (int k = 0; k < keyword_count; k++) {
+            int len = strlen(keywords[k]);
+            if (strncmp(ptr, keywords[k], len) == 0) {
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 100, 100, 255));
+                ImGui::TextUnformatted(ptr, ptr + len);
+                ImGui::PopStyleColor();
+                ptr += len;
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            const char* start = ptr;
+            while (*ptr && *ptr != ' ') ptr++;
+            ImGui::TextUnformatted(start, ptr);
+        }
+        if (*ptr == ' ') {
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::TextUnformatted(" ");
+            ptr++;
+        }
+    }
 }
